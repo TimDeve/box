@@ -1,0 +1,72 @@
+(Debug.sanitize-addresses)
+
+(register-type JsonNodeBox "void*")
+(defmodule JsonNodeBox
+ (sig prn (Fn [(Ref JsonNodeBox)] String))
+ (defn prn [bx] @"JsonNodeBox")
+ (implements prn JsonNodeBox.prn))
+
+(deftype JsonNode
+ (Num [Double])
+ (Arr [(Array JsonNodeBox)])
+ (Obj [(Map String JsonNodeBox)])
+ (Str [String])
+ (Bol [Bool])
+ Null)
+
+(defmodule JsonNodeBox
+  (deftemplate box (Fn [JsonNode] JsonNodeBox)
+                   "void* $NAME(JsonNode some)"
+                   "$DECL {
+                      JsonNode *box = (JsonNode*)CARP_MALLOC(sizeof(JsonNode));
+                      assert(box);
+                      *box = some;
+                      return box;
+                    }")
+  (deftemplate unbox (Fn [JsonNodeBox] JsonNode)
+                     "JsonNode $NAME(void* box)"
+                     "$DECL {
+                        JsonNode some = *((JsonNode*)box);
+                        free(box);
+                        return some;
+                      }")
+  (deftemplate peek (Fn [(Ref JsonNodeBox)] (Ref JsonNode))
+                    "JsonNode* $NAME(void** boxptr)"
+                    "$DECL {
+                       return *boxptr;
+                     }")
+
+ (deftemplate copy (Fn [(Ref JsonNodeBox)] JsonNodeBox)
+                   "void* $NAME(void** pptr)"
+                   "$DECL {
+                      JsonNode *box = (JsonNode*)CARP_MALLOC(sizeof(JsonNode));
+                      assert(box);
+                      *box = JsonNode_copy((JsonNode*)*pptr);
+                      return box;
+                   }")
+ (implements copy JsonNodeBox.copy)
+ (defn zero [] (box (JsonNode.Null)))
+ (implements zero JsonNodeBox.zero)
+
+ (deftemplate delete (Fn [JsonNodeBox] ())
+                   "void $NAME(void* bx)"
+                   "$DECL {
+                      JsonNode_delete(*(JsonNode*)bx);
+                      CARP_FREE(bx);
+                      printf(\"Free\n\");
+                    }"))
+
+(use-all JsonNode JsonNodeBox)
+
+(defn-do main []
+  (let [some (Obj {@"num" (box (Num Double.pi)) @"bol" (box (Bol false))})] ())
+  (let [some (Obj {@"Ok" (box (Num Double.pi))})]
+    (println* (match some
+                (Obj map)
+                (match (unbox (Map.get &map "Ok"))
+                  (Num num) (str num)
+                  _ @"Something")
+                _ @"Wow")))
+  (match-ref (peek &(box (Str @"Hello")))
+    (Str s) (println* s)
+    _       (println* @"Not a string")))
