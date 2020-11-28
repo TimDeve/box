@@ -23,6 +23,7 @@
                       *box = some;
                       return box;
                     }")
+
   (deftemplate unbox (Fn [JsonNodeBox] JsonNode)
                      "JsonNode $NAME(void* box)"
                      "$DECL {
@@ -30,6 +31,7 @@
                         free(box);
                         return some;
                       }")
+
   (deftemplate peek (Fn [(Ref JsonNodeBox)] (Ref JsonNode))
                     "JsonNode* $NAME(void** boxptr)"
                     "$DECL {
@@ -45,6 +47,7 @@
                       return box;
                    }")
  (implements copy JsonNodeBox.copy)
+
  (defn zero [] (box (JsonNode.Null)))
  (implements zero JsonNodeBox.zero)
 
@@ -67,6 +70,6 @@
                   (Num num) (str num)
                   _ @"Something")
                 _ @"Wow")))
-  (match-ref (peek &(box (Str @"Hello")))
-    (Str s) (println* s)
-    _       (println* @"Not a string")))
+  (println* (match-ref (peek &(box (Str @"Hello")))
+              (Str s) @s
+              _       @"Not a string")))
