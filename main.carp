@@ -2,7 +2,7 @@
 
 (register-type JsonNodeBox "void*")
 (defmodule JsonNodeBox
- (sig prn (Fn [(Ref JsonNodeBox)] String))
+ (sig prn (Fn [JsonNodeBox] String))
  (defn prn [bx] @"JsonNodeBox")
  (implements prn JsonNodeBox.prn))
 
@@ -56,20 +56,17 @@
                    "$DECL {
                       JsonNode_delete(*(JsonNode*)bx);
                       CARP_FREE(bx);
-                      printf(\"Free\n\");
-                    }"))
+                    }")
+ (implements delete JsonNodeBox.delete))
 
 (use-all JsonNode JsonNodeBox)
 
 (defn-do main []
-  (let [some (Obj {@"num" (box (Num Double.pi)) @"bol" (box (Bol false))})] ())
-  (let [some (Obj {@"Ok" (box (Num Double.pi))})]
-    (println* (match some
-                (Obj map)
-                (match (unbox (Map.get &map "Ok"))
-                  (Num num) (str num)
-                  _ @"Something")
-                _ @"Wow")))
-  (println* (match-ref (peek &(box (Str @"Hello")))
-              (Str s) @s
-              _       @"Not a string")))
+  (Debug.log-memory-balance! true)
+  (Debug.reset-memory-balance!)
+  (ignore (box (Bol false))) ; <---- Works
+  (ignore [(box (Bol false)) @&(box (Bol false)) (box (Str @"Ok"))]) ; <----- Works
+  (ignore {@"key" (box (Bol true))}) ; <---- Doesn't work
+  (ignore (Arr [(box (Bol false))])) ; <---- Doesn't work
+  (let [balance (Debug.memory-balance)]
+    (println* "------------------------------------------ Balance: " balance)))
