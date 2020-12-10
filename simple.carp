@@ -1,0 +1,23 @@
+
+(register-type Simple "int")
+(defmodule Simple
+  (deftemplate init (Fn [Int] Simple) "int $NAME(int i)" "$DECL { return i; }")
+
+  (deftemplate delete (Fn [Simple] ()) "void $NAME(int i)" "$DECL { printf(\"Free: %i\n\", i);}")
+  (implements delete Simple.delete)
+  
+  (deftemplate copy (Fn [(Ref Simple)] Simple) "int $NAME(int *i)" "$DECL { return *i; }")
+  (implements copy Simple.copy)
+
+  (deftemplate prn (Fn [(Ref Simple)] String) "String $NAME(int *i)" "$DECL { return \"Simple\"; }")
+  (implements prn Simple.prn))
+
+(deftype Sum
+ (One [(Array Simple)]))
+
+(defn-do main []
+  (ignore (Simple.init 1))
+  (ignore [(Simple.init 2) (Simple.init 3)])
+  (ignore {@"key" (Simple.init 4)})
+  (ignore (Sum.One [(Simple.init 5)])))
+
