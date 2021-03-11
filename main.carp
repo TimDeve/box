@@ -2,9 +2,27 @@
 
 (register-type JsonNodeBox "void*")
 (defmodule JsonNodeBox
- (sig prn (Fn [JsonNodeBox] String))
- (defn prn [bx] @"JsonNodeBox")
- (implements prn JsonNodeBox.prn))
+  (sig prn (Fn [(Ref JsonNodeBox)] String))
+  (defn prn [bx] @"JsonNodeBox")
+  (implements prn JsonNodeBox.prn)
+
+  (deftemplate copy (Fn [(Ref JsonNodeBox)] JsonNodeBox)
+                    "void* $NAME(void** pptr)"
+                    "$DECL {
+                       JsonNode *box = (JsonNode*)CARP_MALLOC(sizeof(JsonNode));
+                       assert(box);
+                       *box = JsonNode_copy((JsonNode*)*pptr);
+                       return box;
+                    }")
+  (implements copy JsonNodeBox.copy)
+
+  (deftemplate delete (Fn [JsonNodeBox] ())
+                    "void $NAME(void* bx)"
+                    "$DECL {
+                       JsonNode_delete(*(JsonNode*)bx);
+                       CARP_FREE(bx);
+                     }")
+  (implements delete JsonNodeBox.delete))
 
 (deftype JsonNode
  (Num [Double])
@@ -38,35 +56,17 @@
                        return *boxptr;
                      }")
 
- (deftemplate copy (Fn [(Ref JsonNodeBox)] JsonNodeBox)
-                   "void* $NAME(void** pptr)"
-                   "$DECL {
-                      JsonNode *box = (JsonNode*)CARP_MALLOC(sizeof(JsonNode));
-                      assert(box);
-                      *box = JsonNode_copy((JsonNode*)*pptr);
-                      return box;
-                   }")
- (implements copy JsonNodeBox.copy)
-
- (defn zero [] (box (JsonNode.Null)))
- (implements zero JsonNodeBox.zero)
-
- (deftemplate delete (Fn [JsonNodeBox] ())
-                   "void $NAME(void* bx)"
-                   "$DECL {
-                      JsonNode_delete(*(JsonNode*)bx);
-                      CARP_FREE(bx);
-                    }")
- (implements delete JsonNodeBox.delete))
+  (defn zero [] (box (JsonNode.Null)))
+  (implements zero JsonNodeBox.zero))
 
 (use-all JsonNode JsonNodeBox)
 
 (defn-do main []
   (Debug.log-memory-balance! true)
   (Debug.reset-memory-balance!)
-  (ignore (box (Bol false))) ; <---- Works
-  (ignore [(box (Bol false)) @&(box (Bol false)) (box (Str @"Ok"))]) ; <----- Works
-  (ignore {@"key" (box (Bol true))}) ; <---- Doesn't work
-  (ignore (Arr [(box (Bol false))])) ; <---- Doesn't work
+  (ignore (box (Str @"Wow")))
+  (ignore [(box (Bol false)) @&(box (Bol false)) (box (Str @"Ok"))])
+  (ignore {@"key" (box (Bol true))})
+  (ignore (Arr [(box (Bol false))]))
   (let [balance (Debug.memory-balance)]
     (println* "------------------------------------------ Balance: " balance)))
